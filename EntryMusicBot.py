@@ -14,25 +14,49 @@ import discord
 settings_file = sys.argv[1]
 print(f"Using settings file: {settings_file}")
 
-def proc_settings(file):
-    with open(file, "r") as read_file:
-        return json.load(read_file)
-
-data = proc_settings(settings_file)
-
-TOKEN = data["token"]
-GUILD = data["guild"]
-TRACK_MAP = data["tracks"]
-RANDOM = data["random"]
 
 class MyClient(discord.Client):
 
-    def load_tracks(self, settings_file):
+    def __init__(self, settings_file):
+        logger.info("Creating client")
+
+        data = self._read_json(settings_file)
+
+        self.general_text_channel = None
+        self.vc = None
+
+        self.token = data["token"]
+        self.guild_name = data["guild"]
+        self.tracks_file = data["track_list"]
+
+        self.random_tracks = None
+        self.track_map = None
+        self.load_tracks()
+        if len(self.random_tracks) == 0:
+            logger.warning("No random tracks specified")
+        if len(self.track_map) == 0:
+            logger.warning("No user tracks specified")
+
+        # Initialise discord client
+        discord.Client.__init__(self)
+
+
+    def get_token(self):
+        return self.token
+
+
+    def _read_json(self, file):
+        with open(file, "r") as read_file:
+            return json.load(read_file)
+
+
+    def load_tracks(self):
         logger.info("Loading Track List:")
-        data = proc_settings(settings_file)
+        data = self._read_json(self.tracks_file)
         self.track_map = data["tracks"]
         self.random_tracks = data["random"]
         self.print_tracks()
+
 
     def print_tracks(self):
         for user, track in self.track_map.items():
@@ -41,13 +65,14 @@ class MyClient(discord.Client):
         for track in self.random_tracks:
             print(f"\t{' '*16}- {track}")
 
+
     async def on_ready(self):
         '''
         Setup
         '''
         logger.info("Running on_ready")
         for guild in client.guilds:
-            if guild.name == GUILD:
+            if guild.name == self.guild_name:
                 self.guild = guild
                 break
 
@@ -75,7 +100,7 @@ class MyClient(discord.Client):
 
         # Reload Track Information
         if message.content.startswith('!reload'):
-            self.load_tracks(settings_file)
+            self.load_tracks()
             await message.channel.send('Reloaded track data')
 
 
@@ -88,8 +113,6 @@ class MyClient(discord.Client):
 
         if before.channel is None and after.channel is not None:
             logger.info(f"Detected {member.name} joining {after.channel.name}")
-            # if self.general_text_channel != None:
-                # await self.general_text_channel.send(f"{member} joined voice chat!")
 
             if self.vc != None:
                 if member.name in self.track_map:
@@ -104,12 +127,10 @@ class MyClient(discord.Client):
                 try:
                     logger.info(f"Playing {track}")
                     self.vc.play(discord.FFmpegPCMAudio(f"tracks/{track}"))
-                    self.vc.source = discord.PCMVolumeTransformer(self.vc.source, volume=0.3)
+                    self.vc.source = discord.PCMVolumeTransformer(self.vc.source, volume=0.6)
                 except discord.errors.ClientException:
                     logger.info(f"{member.name} joined but already playing audio.")
 
-logger.info("Declaring client")
-client = MyClient()
-client.load_tracks(settings_file)
-logger.info("Running client")
-client.run(TOKEN)
+client = MyClient(settings_file)
+token = client.get_token()
+client.run(token)

@@ -1,4 +1,5 @@
 *.json
 !Example_Settings.json
+!Example_TrackList.json
 
 __pycache__/*
