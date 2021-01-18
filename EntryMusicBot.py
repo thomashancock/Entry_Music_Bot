@@ -18,12 +18,15 @@ print(f"Using settings file: {settings_file}")
 class MyClient(discord.Client):
 
     def __init__(self, settings_file):
+        '''
+        Initialise the class from the config file
+        '''
         logger.info("Creating client")
 
         data = self._read_json(settings_file)
 
-        self.general_text_channel = None
-        self.vc = None
+        self.primary_text_channel = None
+        self.primary_voice_channel = None
 
         self.token = data["token"]
         self.guild_name = data["guild"]
@@ -42,15 +45,25 @@ class MyClient(discord.Client):
 
 
     def get_token(self):
+        '''
+        Return token from config
+        TODO: Find a more elegant way to read & pass the token to the client
+        '''
         return self.token
 
 
     def _read_json(self, file):
+        '''
+        Generic read json file
+        '''
         with open(file, "r") as read_file:
             return json.load(read_file)
 
 
     def load_tracks(self):
+        '''
+        Load track information from specified file
+        '''
         logger.info("Loading Track List:")
         data = self._read_json(self.tracks_file)
         self.track_map = data["tracks"]
@@ -59,6 +72,9 @@ class MyClient(discord.Client):
 
 
     def print_tracks(self):
+        '''
+        Print linked tracks to console
+        '''
         for user, track in self.track_map.items():
             print(f"\t{user:16}- {track}")
         print("\n\tRandom Tracks:")
@@ -68,9 +84,11 @@ class MyClient(discord.Client):
 
     async def on_ready(self):
         '''
-        Setup
+        Setup connection to server
         '''
         logger.info("Running on_ready")
+
+        # Check indended guild has been joined
         for guild in client.guilds:
             if guild.name == self.guild_name:
                 self.guild = guild
@@ -82,13 +100,17 @@ class MyClient(discord.Client):
         )
 
         # Save pointers to useful channels
-        self.vc = None
-        self.general_text_channel = None
         for channel in guild.channels:
             if channel.name == "General":
-                self.vc = await channel.connect()
+                self.primary_voice_channel = await channel.connect()
             if channel.name == "bot-testing":
-                self.general_text_channel = channel
+                self.primary_text_channel = channel
+
+        # Check channels succesfully connected
+        if self.primary_voice_channel == None:
+            logging.error("No voice channel has been joined.")
+        if self.primary_text_channel == None:
+            logging.error("No text channel has been joined.")
 
 
     async def on_message(self, message):
@@ -114,7 +136,7 @@ class MyClient(discord.Client):
         if before.channel is None and after.channel is not None:
             logger.info(f"Detected {member.name} joining {after.channel.name}")
 
-            if self.vc != None:
+            if self.primary_voice_channel != None:
                 if member.name in self.track_map:
                     track = self.track_map[member.name]
                 else:
@@ -126,10 +148,11 @@ class MyClient(discord.Client):
 
                 try:
                     logger.info(f"Playing {track}")
-                    self.vc.play(discord.FFmpegPCMAudio(f"tracks/{track}"))
-                    self.vc.source = discord.PCMVolumeTransformer(self.vc.source, volume=0.6)
+                    self.primary_voice_channel.play(discord.FFmpegPCMAudio(f"tracks/{track}"))
+                    self.primary_voice_channel.source = discord.PCMVolumeTransformer(self.primary_voice_channel.source, volume=0.6)
                 except discord.errors.ClientException:
                     logger.info(f"{member.name} joined but already playing audio.")
+
 
 client = MyClient(settings_file)
 token = client.get_token()
