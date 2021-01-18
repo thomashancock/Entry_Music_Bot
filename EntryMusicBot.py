@@ -1,6 +1,4 @@
 # bot.py
-import os
-import sys
 import json
 import random
 
@@ -11,11 +9,8 @@ import LoggerSettings
 
 import discord
 
-settings_file = sys.argv[1]
-print(f"Using settings file: {settings_file}")
 
-
-class MyClient(discord.Client):
+class EntryMusicBot(discord.Client):
 
     def __init__(self, settings_file):
         '''
@@ -89,13 +84,13 @@ class MyClient(discord.Client):
         logger.info("Running on_ready")
 
         # Check indended guild has been joined
-        for guild in client.guilds:
+        for guild in self.guilds:
             if guild.name == self.guild_name:
                 self.guild = guild
                 break
 
         print(
-            f'{client.user} is connected to the following guild:\n'
+            f'{self.user} is connected to the following guild:\n'
             f'{guild.name}(id: {guild.id})'
         )
 
@@ -152,8 +147,3 @@ class MyClient(discord.Client):
                     self.primary_voice_channel.source = discord.PCMVolumeTransformer(self.primary_voice_channel.source, volume=0.6)
                 except discord.errors.ClientException:
                     logger.info(f"{member.name} joined but already playing audio.")
-
-
-client = MyClient(settings_file)
-token = client.get_token()
-client.run(token)
