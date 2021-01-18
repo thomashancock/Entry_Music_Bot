@@ -1,0 +1,4 @@
+*.json
+!Example_Settings.json
+
+__pycache__/*
