@@ -1,4 +1,4 @@
-# bot.py
+# EntryMusicBot.py
 import json
 import random
 
