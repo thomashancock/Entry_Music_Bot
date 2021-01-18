@@ -4,6 +4,11 @@ import sys
 import json
 import random
 
+# Setup logging
+import logging
+logger = logging.getLogger(__file__)
+import LoggerSettings
+
 import discord
 
 settings_file = sys.argv[1]
@@ -23,20 +28,24 @@ RANDOM = data["random"]
 class MyClient(discord.Client):
 
     def load_tracks(self, settings_file):
-        print("Loading Track List:")
+        logger.info("Loading Track List:")
         data = proc_settings(settings_file)
         self.track_map = data["tracks"]
-        for user, track in self.track_map.items():
-            print(f"\t{user}:\t{track}")
         self.random_tracks = data["random"]
+        self.print_tracks()
+
+    def print_tracks(self):
+        for user, track in self.track_map.items():
+            print(f"\t{user:16}- {track}")
         print("\n\tRandom Tracks:")
         for track in self.random_tracks:
-            print(f"\t\t{track}")
+            print(f"\t{' '*16}- {track}")
 
     async def on_ready(self):
         '''
         Setup
         '''
+        logger.info("Running on_ready")
         for guild in client.guilds:
             if guild.name == GUILD:
                 self.guild = guild
@@ -64,11 +73,7 @@ class MyClient(discord.Client):
         if message.author == self.user:
             return
 
-        # Reply to hello
-        if message.content.startswith('!hello'):
-            await message.channel.send('Hello!')
-
-        # Send gif
+        # Reload Track Information
         if message.content.startswith('!reload'):
             self.load_tracks(settings_file)
             await message.channel.send('Reloaded track data')
@@ -82,7 +87,7 @@ class MyClient(discord.Client):
             return
 
         if before.channel is None and after.channel is not None:
-            print(f"Detected {member.name} joining {after.channel.name}")
+            logger.info(f"Detected {member.name} joining {after.channel.name}")
             # if self.general_text_channel != None:
                 # await self.general_text_channel.send(f"{member} joined voice chat!")
 
@@ -92,17 +97,19 @@ class MyClient(discord.Client):
                 else:
                     track_no = random.randrange(0, len(self.random_tracks))
                     if track_no > len(self.random_tracks):
-                        print("Error: Track index out of range. Default to 0.")
+                        logger.error("Track index out of range. Default to 0.")
                         track_no = 0
                     track = self.random_tracks[track_no]
 
                 try:
+                    logger.info(f"Playing {track}")
                     self.vc.play(discord.FFmpegPCMAudio(f"tracks/{track}"))
                     self.vc.source = discord.PCMVolumeTransformer(self.vc.source, volume=0.3)
                 except discord.errors.ClientException:
-                    print("User joined but already playing audio.")
+                    logger.info(f"{member.name} joined but already playing audio.")
 
-
+logger.info("Declaring client")
 client = MyClient()
 client.load_tracks(settings_file)
+logger.info("Running client")
 client.run(TOKEN)
