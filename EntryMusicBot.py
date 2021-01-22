@@ -23,6 +23,9 @@ class EntryMusicBot(discord.Client):
         self.primary_text_channel = None
         self.primary_voice_channel = None
 
+        self.primary_voice_channel_name = data["primary_voice_channel"]
+        self.primary_text_channel_name = data["primary_text_channel"]
+
         self.token = data["token"]
         self.guild_name = data["guild"]
         self.tracks_file = data["track_list"]
@@ -96,9 +99,9 @@ class EntryMusicBot(discord.Client):
 
         # Save pointers to useful channels
         for channel in guild.channels:
-            if channel.name == "General":
+            if channel.name == self.primary_voice_channel_name:
                 self.primary_voice_channel = await channel.connect()
-            if channel.name == "bot-testing":
+            if channel.name == self.primary_text_channel_name:
                 self.primary_text_channel = channel
 
         # Check channels succesfully connected
